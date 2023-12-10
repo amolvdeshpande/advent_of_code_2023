@@ -303,3 +303,31 @@ temp3 as (
         )
 select sum(numcopies)
 from temp3;
+
+
+with recursive temp1 as (
+    select regexp_substr(card, '[0-9]+')::integer card_id,
+           string_to_array(split_part(split_part(card, ':', 2), '|' , 1), ' ') card_numbers, 
+           string_to_array(split_part(split_part(card, ':', 2), '|' , 2), ' ') winning_numbers
+    from input),
+temp2 as (
+        select card_id, (select count(*) 
+                         from unnest(card_numbers) as card_num 
+                         where card_num = any(winning_numbers) and length(card_num)> 0) as num_matches
+        from temp1
+        ),
+temp3 as (
+        SELECT * FROM temp2
+        UNION ALL
+        SELECT
+            temp2.card_id,
+            temp2.num_matches
+        FROM
+            temp3,
+            temp2,
+            generate_series(1, temp3.num_matches) as step
+        WHERE
+            temp3.card_id + step = temp2.card_id
+        )
+select count(*)
+from temp3;
